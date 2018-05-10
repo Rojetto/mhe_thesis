@@ -32,7 +32,8 @@ class BallBeamObserverModel(ObserverModel):
 
         f, h = self.derive_jacobians()
 
-        super().__init__(4, 1, 1, f, h, [self.beam_edges_constraint, self.beam_angle_constraint])
+        super().__init__(4, 1, 1, f, h, [(self.beam_edges_constraint, self.beam_edges_constraint_jac),
+                                         (self.beam_angle_constraint, self.beam_angle_constraint_jac)])
 
     def derive_jacobians(self):
         x1, x2, x3, x4, tau, h, B, G, M, J, Jb = sp.symbols("x_1 x_2 x_3 x_4 tau h B G M J J_b")
@@ -46,8 +47,9 @@ class BallBeamObserverModel(ObserverModel):
         F = f.jacobian(x).subs({B: self.B, G: self.G, M: self.M, J: self.J, Jb: self.Jb})
         scalar_lambda = sp.lambdify((x1, x2, x3, x4, tau, h), F)
 
-        f_jacobian = lambda x, u, h: scalar_lambda(x[0], x[1], x[2], x[3], u[0], h)
-        h_jacobian = lambda x: np.array([[1, 0, 0, 0]], dtype=np.float32)
+        def f_jacobian(x, u, h): return scalar_lambda(x[0], x[1], x[2], x[3], u[0], h)
+
+        def h_jacobian(x): return np.array([[1, 0, 0, 0]], dtype=np.float32)
 
         return f_jacobian, h_jacobian
 
@@ -68,9 +70,17 @@ class BallBeamObserverModel(ObserverModel):
         return np.array([x[0] + 4,   # left edge
                          4 - x[0]])  # right edge
 
+    def beam_edges_constraint_jac(self, x: Array) -> Array:
+        return np.array([[1., 0., 0., 0.],
+                         [-1., 0., 0., 0.]])
+
     def beam_angle_constraint(self, x: Array) -> Array:
         return np.array([x[2] + np.pi/2,   # min angle
                          np.pi/2 - x[2]])  # max angle
+
+    def beam_angle_constraint_jac(self, x: Array) -> Array:
+        return np.array([[0., 0., 1., 0.],
+                         [0., 0., -1., 0.]])
 
 
 class BallBeamEKF(ExtendedKalmanFilterObserver):

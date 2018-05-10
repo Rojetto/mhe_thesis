@@ -14,8 +14,8 @@ class ObserverModel:
 
     def __init__(self, state_dim: int, input_dim: int, output_dim: int,
                  f_jacobian: Callable[[Array, Array, float], Array], h_jacobian: Callable[[Array], Array],
-                 state_ineq_constraints: List[Callable[[Array], Union[Array, float]]] = None,
-                 state_eq_constraints: List[Callable[[Array], Union[Array, float]]] = None):
+                 state_ineq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], Callable[[Array], Array]]] = None,
+                 state_eq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], Callable[[Array], Array]]] = None):
         self.state_dim = state_dim
         """Size of the state vector x"""
         self.input_dim = input_dim
@@ -28,14 +28,14 @@ class ObserverModel:
         self.h_jacobian = h_jacobian
         """Callable (array of states) that returns the output function jacobian with respect to x"""
 
-        self.state_ineq_constraints: List[Callable[[Array], float]] = []
-        """List of callables to evaluate inequality constraints (constraint satisfied when > 0)"""
+        self.state_ineq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], Callable[[Array], Array]]] = []
+        """List of pairs of callables to evaluate inequality constraints (constraint satisfied when > 0) and their jacobians"""
 
         if state_ineq_constraints is not None:
             self.state_ineq_constraints = state_ineq_constraints
 
-        self.state_eq_constraints: List[Callable[[Array], float]] = []
-        """List of callables to evaluate equality constraints (constraint satisfied when = 0)"""
+        self.state_eq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], Callable[[Array], Array]]] = []
+        """List of pairs of callables to evaluate equality constraints (constraint satisfied when = 0) and their jacobians"""
 
         if state_eq_constraints is not None:
             self.state_eq_constraints = state_eq_constraints

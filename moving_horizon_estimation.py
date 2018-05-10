@@ -225,7 +225,7 @@ class MovingHorizonEstimator(pm.Observer):
 
         chis, _, _ = self.reshape_opt_vector(chis_and_omegas)
 
-        return self.observer_model.state_ineq_constraints[constraint_index](chis[x_index])
+        return self.observer_model.state_ineq_constraints[constraint_index][0](chis[x_index])
 
     def state_eq_constraint_wrapper(self, x_index: int, constraint_index: int, chis_and_omegas: Array) -> Union[float, Array]:
         """
@@ -240,7 +240,7 @@ class MovingHorizonEstimator(pm.Observer):
 
         chis, _, _ = self.reshape_opt_vector(chis_and_omegas)
 
-        return self.observer_model.state_eq_constraints[constraint_index](chis[x_index])
+        return self.observer_model.state_eq_constraints[constraint_index][0](chis[x_index])
 
     def _observe(self, time, system_input: Array, system_output: Array) -> Array:
         """
