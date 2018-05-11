@@ -41,6 +41,11 @@ class MovingHorizonEstimator(pm.Observer):
         self.R_inv: Array = np.linalg.inv(self.R)
         self.R_inv_sqrt: Array = np.sqrt(self.R_inv)
 
+        self.P_rti = np.eye(self.observer_model.state_dim)
+        """Weight matrix for arrival cost in RTI scheme"""
+        self.xL_rti = self._settings['initial state']
+        """State at left horizon edge for arrival cost in RTI scheme"""
+
         self.N: int = self._settings['N']
         self.max_iter: int = self.settings['max iter']
         self.use_constraints = self._settings['constraints']
@@ -264,33 +269,34 @@ class MovingHorizonEstimator(pm.Observer):
 
         state_dim = self.observer_model.state_dim
         output_dim = self.observer_model.output_dim
-        if self.k == 0:
-            if self.rti:
-                self.last_ys = np.array([y]) # y[0]
+        if not self.rti:
+            if self.k == 0:
+                # Wir können nur den Initialwert ausgeben
+                # y[0] schreiben wir nicht mit, da wir es sowieso nicht für Messupdates verwenden
+                self.k += 1
+                return np.concatenate((self.last_xs[0], np.zeros(state_dim)))
 
-            # Wir können nur den Initialwert ausgeben
-            # y[0] schreiben wir nicht mit, da wir es sowieso nicht für Messupdates verwenden
-            self.k += 1
-            return np.concatenate((self.last_xs[0], np.zeros(state_dim)))
-
-        if self.k > self.N:
-            # Wir haben keinen FIE mehr sondern müssen jetzt die arrival cost approximieren
-            # Es ist wichtig, dass wir das vor dem Update des u und y Speichers machen, da sonst das erste Element, das
-            # wir fürs EKF Update brauchen verloren geht
-            timer.tic()
-            _, P = self.ekf.step(self.last_us[0], self.last_ys[0], self.step_width)  # P[k-N]
-            P_inv = np.linalg.inv(P)
-            timer.toc()
-        else:
-            # Wichtung der Arrival Cost so, dass möglichst exakt der Initialzustand genommen wird
-            P_inv = np.identity(state_dim) * 1e6
+            if self.k > self.N:
+                # Wir haben keinen FIE mehr sondern müssen jetzt die arrival cost approximieren
+                # Es ist wichtig, dass wir das vor dem Update des u und y Speichers machen, da sonst das erste Element, das
+                # wir fürs EKF Update brauchen verloren geht
+                timer.tic()
+                _, P = self.ekf.step(self.last_us[0], self.last_ys[0], self.step_width)  # P[k-N]
+                P_inv = np.linalg.inv(P)
+                timer.toc()
+            else:
+                # Wichtung der Arrival Cost so, dass möglichst exakt der Initialzustand genommen wird
+                P_inv = np.identity(state_dim) * 1e6
 
         current_cache_size = self.last_us.shape[0]
 
-        if current_cache_size < self.N:
-            self.last_us = np.resize(self.last_us, (current_cache_size + 1, self.observer_model.input_dim))
-        else:
-            self.last_us[:-1] = self.last_us[1:]
+        if self.k > 0:
+            if current_cache_size < self.N:
+                self.last_us = np.resize(self.last_us, (current_cache_size + 1, self.observer_model.input_dim))
+            else:
+                self.last_us[:-1] = self.last_us[1:]
+
+            self.last_us[-1] = u  # u[k-N .. k-1]
 
         if (self.rti and self.k <= self.N) or \
            (not self.rti and current_cache_size < self.N):
@@ -298,33 +304,33 @@ class MovingHorizonEstimator(pm.Observer):
         else:
             self.last_ys[:-1] = self.last_ys[1:]
 
-        self.last_us[-1] = u  # u[k-N .. k-1]
         self.last_ys[-1] = y  # y[k-N+1 .. k]
 
         N = self.last_us.shape[0]
         x0 = self.last_xs[0]
 
         if self.rti:
-            new_state_init_guess = self.observer_model.discrete_state_func(self.last_opt_result[-1], u,
-                                                                           np.zeros(self.observer_model.state_dim),
-                                                                           self.step_width)
+            if self.k > 0:
+                new_state_init_guess = self.observer_model.discrete_state_func(self.last_opt_result[-1], u,
+                                                                               np.zeros(self.observer_model.state_dim),
+                                                                               self.step_width)
 
-            if self.k > self.N:
-                xs = np.concatenate((self.last_opt_result[1:], np.array([new_state_init_guess])))
+                if self.k > self.N:
+                    xs = np.concatenate((self.last_opt_result[1:], np.array([new_state_init_guess])))
+                else:
+                    xs = np.concatenate((self.last_opt_result, np.array([new_state_init_guess])))
             else:
-                xs = np.concatenate((self.last_opt_result, np.array([new_state_init_guess])))
+                xs = self.last_opt_result
 
             nx = xs.shape[0]
 
-            P_inv_sqrt = np.sqrt(np.abs(P_inv)) # TODO: Remove and replace
-
             # Calculating the residual vector
             timer.tic()
-            residual = np.empty((N+1)*(state_dim + output_dim), dtype=np.float64)
-            residual[:state_dim] = P_inv_sqrt @ (xs[0] - xs[0]) # TODO: Replace with QR arrival cost
+            residual = np.empty((nx)*(state_dim + output_dim), dtype=np.float64)
+            residual[:state_dim] = self.P_rti @ (xs[0] - self.xL_rti)
             residual[state_dim:(state_dim+output_dim)] = self.R_inv_sqrt @ (self.last_ys[0] - self.observer_model.output_func(xs[0]))
 
-            for j in range(1, N+1):
+            for j in range(1, nx):
                 residual[j*(state_dim+output_dim):j*(state_dim+output_dim)+state_dim] = self.Q_inv_sqrt @ (xs[j] - self.observer_model.discrete_state_func(xs[j-1], self.last_us[j-1], np.zeros(state_dim), self.step_width))
                 residual[j*(state_dim+output_dim)+state_dim:(j+1)*(state_dim+output_dim)] = self.R_inv_sqrt @ (self.last_ys[j] - self.observer_model.output_func(xs[j]))
 
@@ -334,7 +340,7 @@ class MovingHorizonEstimator(pm.Observer):
             residual_jacobian = co.spmatrix(0, [], [], (residual.size, state_dim*nx), 'd')
             for i_time in range(0, nx):
                 if i_time == 0:
-                    residual_jacobian[:state_dim, :state_dim] = P_inv_sqrt
+                    residual_jacobian[:state_dim, :state_dim] = self.P_rti
                 else:
                     residual_jacobian[(state_dim + output_dim) * i_time:(state_dim + output_dim) * i_time + state_dim,
                                       state_dim * i_time:state_dim * (i_time + 1)] = self.Q_inv_sqrt
@@ -399,18 +405,49 @@ class MovingHorizonEstimator(pm.Observer):
             A_QP = total_eq_constraint_jac
             G_QP = - total_ineq_constraint_jac
             timer.toc()
+
+            # Solve QP
             timer.tic()
             co.solvers.options['show_progress'] = False
             opt_result = co.solvers.qp(P_QP, q_QP, G_QP, h_QP, A_QP, b_QP)
+
+            # Calculate updated state estimates in horizon
             deltax = np.array(opt_result['x']).reshape((nx, state_dim))
             timer.toc()
 
             self.last_opt_result = xs + deltax
             estimated_state = self.last_opt_result[-1]
-            self.k += 1
 
+            # Update arrival cost parameters
+            if self.k >= self.N:
+                # We only start updating the arrival cost once we're actually moving the estimation horizon
+                xL = self.last_opt_result[0]
+                F = self.observer_model.f_jacobian(xL, self.last_us[0], self.step_width)
+                H = self.observer_model.h_jacobian(xL)
+
+                Phi = np.zeros((2*state_dim+output_dim, 2*state_dim))
+                Phi[:state_dim,:state_dim] = self.P_rti
+                Phi[state_dim:state_dim+output_dim,:state_dim] = -self.R_inv_sqrt @ H
+                Phi[state_dim+output_dim:, :state_dim] = - self.Q_inv_sqrt @ F
+                Phi[state_dim+output_dim:, state_dim:] = self.Q_inv_sqrt
+
+                minus_b = np.empty(2*state_dim+output_dim)
+                minus_b[:state_dim] = - self.P_rti @ self.xL_rti
+                minus_b[state_dim:state_dim+output_dim] = self.R_inv_sqrt @ (self.last_ys[0] - self.observer_model.output_func(xL) + H @ xL)
+                minus_b[state_dim+output_dim:] = - self.Q_inv_sqrt @ (self.observer_model.discrete_state_func(xL, self.last_us[0], np.zeros(state_dim), self.step_width) - F @ xL)
+
+                Q_decomp, R_decomp = scipy.linalg.qr(Phi)
+                rho = Q_decomp.T @ minus_b
+                rho2 = rho[state_dim:2*state_dim]
+                R2 = R_decomp[state_dim:2*state_dim, state_dim:]
+
+                self.P_rti = R2
+                self.xL_rti = scipy.linalg.solve(R2, -rho2)
+
+            # Output
+            self.k += 1
             #print(f"Observation step took {total_timer.toc() * 1000} ms")
-            return np.concatenate((estimated_state, self.ekf.P.diagonal()))
+            return estimated_state
         else:
             constraints = []
             if self.use_constraints:
