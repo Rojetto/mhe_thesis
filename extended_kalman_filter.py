@@ -14,8 +14,8 @@ class ObserverModel:
 
     def __init__(self, state_dim: int, input_dim: int, output_dim: int,
                  f_jacobian: Callable[[Array, Array, float], Array], h_jacobian: Callable[[Array], Array],
-                 state_ineq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], Callable[[Array], Array]]] = None,
-                 state_eq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], Callable[[Array], Array]]] = None):
+                 state_ineq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], int, Callable[[Array], Array]]] = None,
+                 state_eq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], int, Callable[[Array], Array]]] = None):
         self.state_dim = state_dim
         """Size of the state vector x"""
         self.input_dim = input_dim
@@ -28,14 +28,14 @@ class ObserverModel:
         self.h_jacobian = h_jacobian
         """Callable (array of states) that returns the output function jacobian with respect to x"""
 
-        self.state_ineq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], Callable[[Array], Array]]] = []
-        """List of pairs of callables to evaluate inequality constraints (constraint satisfied when > 0) and their jacobians"""
+        self.state_ineq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], int, Callable[[Array], Array]]] = []
+        """List of tuples of callables to evaluate inequality constraints (constraint satisfied when > 0), their output dimension and their jacobians"""
 
         if state_ineq_constraints is not None:
             self.state_ineq_constraints = state_ineq_constraints
 
-        self.state_eq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], Callable[[Array], Array]]] = []
-        """List of pairs of callables to evaluate equality constraints (constraint satisfied when = 0) and their jacobians"""
+        self.state_eq_constraints: List[Tuple[Callable[[Array], Union[Array, float]], int, Callable[[Array], Array]]] = []
+        """List of tuples of callables to evaluate equality constraints (constraint satisfied when = 0), their output dimension and their jacobians"""
 
         if state_eq_constraints is not None:
             self.state_eq_constraints = state_eq_constraints
@@ -114,13 +114,13 @@ class ExtendedKalmanFilterObserver(pm.Observer):
         settings.update(output_dim=observer_model.state_dim)
         super().__init__(settings)
 
-        Q_diagonal = np.array(self._settings['sqrt Qii'], dtype=np.float32) ** 2
+        Q_diagonal = np.array(self._settings['sqrt Qii'], dtype=np.float64) ** 2
         Q = np.diag(Q_diagonal)
-        R_diagonal = np.array(self._settings['sqrt Rii'], dtype=np.float32) ** 2
+        R_diagonal = np.array(self._settings['sqrt Rii'], dtype=np.float64) ** 2
         R = np.diag(R_diagonal)
 
-        P0 = np.identity(observer_model.state_dim, dtype=np.float32)
-        x0 = np.array(self._settings["initial state"], dtype=np.float32)
+        P0 = np.identity(observer_model.state_dim, dtype=np.float64)
+        x0 = np.array(self._settings["initial state"], dtype=np.float64)
 
         self.filter_algorithm = ExtendedKalmanFilter(observer_model, Q, R, x0, P0)
 

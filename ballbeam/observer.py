@@ -32,8 +32,8 @@ class BallBeamObserverModel(ObserverModel):
 
         f, h = self.derive_jacobians()
 
-        super().__init__(4, 1, 1, f, h, [(self.beam_edges_constraint, self.beam_edges_constraint_jac),
-                                         (self.beam_angle_constraint, self.beam_angle_constraint_jac)])
+        super().__init__(4, 1, 1, f, h, [(self.beam_edges_constraint, 2, self.beam_edges_constraint_jac),
+                                         (self.beam_angle_constraint, 2, self.beam_angle_constraint_jac)])
 
     def derive_jacobians(self):
         x1, x2, x3, x4, tau, h, B, G, M, J, Jb = sp.symbols("x_1 x_2 x_3 x_4 tau h B G M J J_b")
@@ -49,7 +49,7 @@ class BallBeamObserverModel(ObserverModel):
 
         def f_jacobian(x, u, h): return scalar_lambda(x[0], x[1], x[2], x[3], u[0], h)
 
-        def h_jacobian(x): return np.array([[1, 0, 0, 0]], dtype=np.float32)
+        def h_jacobian(x): return np.array([[1, 0, 0, 0]], dtype=np.float64)
 
         return f_jacobian, h_jacobian
 
@@ -61,10 +61,10 @@ class BallBeamObserverModel(ObserverModel):
         x4_next = x4 + h * (u[0] - 2 * self.M * x1 * x2 * x4 - self.M * self.G * x1 * np.cos(x3)) / (
                 self.M * x1 ** 2 + self.J + self.Jb)
 
-        return np.array([x1_next, x2_next, x3_next, x4_next] + w, dtype=np.float32)
+        return np.array([x1_next, x2_next, x3_next, x4_next] + w, dtype=np.float64)
 
     def output_func(self, x):
-        return np.array([x[0]], dtype=np.float32)
+        return np.array([x[0]], dtype=np.float64)
 
     def beam_edges_constraint(self, x: Array) -> Array:
         return np.array([x[0] + 4,   # left edge
