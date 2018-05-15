@@ -22,14 +22,14 @@ class MovingHorizonEstimator(pm.Observer):
         ("max iter", 15),
         ("constraints", False),
         ("quad", True),
-        ("rti", True)
+        ("rti", True),
+        ("tick divider", 10)
     ])
 
     def __init__(self, settings, observer_model):
         self.observer_model: ObserverModel = observer_model
 
         settings.update(output_dim=self.observer_model.state_dim)
-        settings['tick divider'] = 10
         super().__init__(settings)
 
         Q_diagonal = np.array(self._settings['sqrt Qii'], dtype=np.float64) ** 2
@@ -64,6 +64,8 @@ class MovingHorizonEstimator(pm.Observer):
         self.k = 0
 
         self.ekf = ExtendedKalmanFilter(self.observer_model, self.Q, self.R, self.last_xs[0], np.identity(self.observer_model.state_dim))
+
+        self.timer = Timer()
 
     def reshape_opt_vector(self, chis_and_omegas: Array) -> Tuple[Array, Array, int]:
         """
@@ -259,11 +261,13 @@ class MovingHorizonEstimator(pm.Observer):
         Observer output function that returns the state estimate as well as the estimated variances for each state
         """
 
-        total_timer = Timer()
-        total_timer.tic()
-        timer = Timer()
-        if self.k == 100 or self.k == 200:
-            timer.enable()
+        timer = self.timer
+
+        if self.k % 100 == 0:
+            timer.print()
+
+        timer.tic("Total observation")
+
         y = system_output  # y[k]
         u = system_input  # u[k-1]
 
@@ -274,13 +278,14 @@ class MovingHorizonEstimator(pm.Observer):
                 # Wir können nur den Initialwert ausgeben
                 # y[0] schreiben wir nicht mit, da wir es sowieso nicht für Messupdates verwenden
                 self.k += 1
+                timer.toc()
                 return np.concatenate((self.last_xs[0], np.zeros(state_dim)))
 
             if self.k > self.N:
                 # Wir haben keinen FIE mehr sondern müssen jetzt die arrival cost approximieren
                 # Es ist wichtig, dass wir das vor dem Update des u und y Speichers machen, da sonst das erste Element, das
                 # wir fürs EKF Update brauchen verloren geht
-                timer.tic()
+                timer.tic("EKF Update")
                 _, P = self.ekf.step(self.last_us[0], self.last_ys[0], self.step_width)  # P[k-N]
                 P_inv = np.linalg.inv(P)
                 timer.toc()
@@ -288,6 +293,7 @@ class MovingHorizonEstimator(pm.Observer):
                 # Wichtung der Arrival Cost so, dass möglichst exakt der Initialzustand genommen wird
                 P_inv = np.identity(state_dim) * 1e6
 
+        timer.tic("Cache updates")
         current_cache_size = self.last_us.shape[0]
 
         if self.k > 0:
@@ -305,11 +311,14 @@ class MovingHorizonEstimator(pm.Observer):
             self.last_ys[:-1] = self.last_ys[1:]
 
         self.last_ys[-1] = y  # y[k-N+1 .. k]
+        timer.toc()
 
         N = self.last_us.shape[0]
         x0 = self.last_xs[0]
 
         if self.rti:
+            # Initialize optimization vector by shifting
+            timer.tic("Shifting")
             if self.k > 0:
                 new_state_init_guess = self.observer_model.discrete_state_func(self.last_opt_result[-1], u,
                                                                                np.zeros(self.observer_model.state_dim),
@@ -323,9 +332,10 @@ class MovingHorizonEstimator(pm.Observer):
                 xs = self.last_opt_result
 
             nx = xs.shape[0]
+            timer.toc()
 
             # Calculating the residual vector
-            timer.tic()
+            timer.tic("Residual vector")
             residual = np.empty((nx)*(state_dim + output_dim), dtype=np.float64)
             residual[:state_dim] = self.P_rti @ (xs[0] - self.xL_rti)
             residual[state_dim:(state_dim+output_dim)] = self.R_inv_sqrt @ (self.last_ys[0] - self.observer_model.output_func(xs[0]))
@@ -336,7 +346,7 @@ class MovingHorizonEstimator(pm.Observer):
 
             timer.toc()
             # Calculating the residual jacobian
-            timer.tic()
+            timer.tic("Residual jacobians")
             residual_jacobian = co.spmatrix(0, [], [], (residual.size, state_dim*nx), 'd')
             for i_time in range(0, nx):
                 if i_time == 0:
@@ -357,7 +367,7 @@ class MovingHorizonEstimator(pm.Observer):
 
             timer.toc()
             # Calculating the constraint values
-            timer.tic()
+            timer.tic("Constraint values")
             # TODO: Pre-allocate properly
             all_eq_constraints = np.empty(0)
 
@@ -377,7 +387,7 @@ class MovingHorizonEstimator(pm.Observer):
 
             timer.toc()
             # Calculating the constraint jacobians
-            timer.tic()
+            timer.tic("Constraint jacobians")
             total_eq_constraint_dim = sum([c[1] for c in self.observer_model.state_eq_constraints])
             total_eq_constraint_jac = co.spmatrix(0, [], [], (total_eq_constraint_dim * nx, state_dim * nx), 'd')
 
@@ -407,7 +417,7 @@ class MovingHorizonEstimator(pm.Observer):
             timer.toc()
 
             # Solve QP
-            timer.tic()
+            timer.tic("QP subproblem")
             co.solvers.options['show_progress'] = False
             opt_result = co.solvers.qp(P_QP, q_QP, G_QP, h_QP, A_QP, b_QP)
 
@@ -420,6 +430,8 @@ class MovingHorizonEstimator(pm.Observer):
 
             # Update arrival cost parameters
             if self.k >= self.N:
+                timer.tic("arrival cost")
+                timer.tic("arrival cost matrices")
                 # We only start updating the arrival cost once we're actually moving the estimation horizon
                 xL = self.last_opt_result[0]
                 F = self.observer_model.f_jacobian(xL, self.last_us[0], self.step_width)
@@ -436,17 +448,25 @@ class MovingHorizonEstimator(pm.Observer):
                 minus_b[state_dim:state_dim+output_dim] = self.R_inv_sqrt @ (self.last_ys[0] - self.observer_model.output_func(xL) + H @ xL)
                 minus_b[state_dim+output_dim:] = - self.Q_inv_sqrt @ (self.observer_model.discrete_state_func(xL, self.last_us[0], np.zeros(state_dim), self.step_width) - F @ xL)
 
+                timer.toc()
+
+                timer.tic("QR decomposition")
                 Q_decomp, R_decomp = scipy.linalg.qr(Phi)
+                timer.toc()
+
+                timer.tic("final arrival cost params")
                 rho = Q_decomp.T @ minus_b
                 rho2 = rho[state_dim:2*state_dim]
                 R2 = R_decomp[state_dim:2*state_dim, state_dim:]
 
                 self.P_rti = R2
                 self.xL_rti = scipy.linalg.solve(R2, -rho2)
+                timer.toc()
+                timer.toc()
 
             # Output
             self.k += 1
-            #print(f"Observation step took {total_timer.toc() * 1000} ms")
+            timer.toc()
             return estimated_state
         else:
             constraints = []
@@ -496,4 +516,5 @@ class MovingHorizonEstimator(pm.Observer):
 
             self.k += 1
 
+            timer.toc()
             return np.concatenate((estimated_state, self.ekf.P.diagonal()))
