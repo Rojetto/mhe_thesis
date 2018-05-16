@@ -259,6 +259,30 @@ class MovingHorizonEstimator(pm.Observer):
 
         return self.observer_model.state_eq_constraints[constraint_index][0](chis[x_index])
 
+    def state_eq_constraint_jac(self, x_index: int, constraint_index: int, chis_and_omegas: Array) -> Array:
+        chis, _, N = self.reshape_opt_vector(chis_and_omegas)
+        state_dim = self.observer_model.state_dim
+
+        constraint = self.observer_model.state_eq_constraints[constraint_index]
+        jac = np.zeros((constraint[1], (N*2+1) * state_dim), dtype=np.float64)
+        constraint_jac = constraint[2](chis[x_index])
+
+        jac[:, x_index*state_dim:(x_index+1)*state_dim] = constraint_jac
+
+        return jac
+
+    def state_ineq_constraint_jac(self, x_index: int, constraint_index: int, chis_and_omegas: Array) -> Array:
+        chis, _, N = self.reshape_opt_vector(chis_and_omegas)
+        state_dim = self.observer_model.state_dim
+
+        constraint = self.observer_model.state_ineq_constraints[constraint_index]
+        jac = np.zeros((constraint[1], (N*2+1) * state_dim), dtype=np.float64)
+        constraint_jac = constraint[2](chis[x_index])
+
+        jac[:, x_index*state_dim:(x_index+1)*state_dim] = constraint_jac
+
+        return jac
+
     def _observe(self, time, system_input: Array, system_output: Array) -> Array:
         """
         Observer output function that returns the state estimate as well as the estimated variances for each state
@@ -451,27 +475,33 @@ class MovingHorizonEstimator(pm.Observer):
             return estimated_state
         else:
             constraints = []
+            timer.tic("Constraint jacobians")
             if self.use_constraints:
                 # we need to add constraints to every state vector contained in the current optimization horizon
                 for time_index in range(N + 1):
                     # define equality constraints
                     for constraint_index in range(len(self.observer_model.state_eq_constraints)):
                         constraint_lambda = partial(self.state_eq_constraint_wrapper, time_index, constraint_index)
-                        new_constraint = {'type': 'eq', 'fun': constraint_lambda}
+                        constraint_jac = partial(self.state_eq_constraint_jac, time_index, constraint_index)
+                        new_constraint = {'type': 'eq', 'fun': constraint_lambda, 'jac': constraint_jac}
                         constraints.append(new_constraint)
 
                     # define inequality constraints
                     for constraint_index in range(len(self.observer_model.state_ineq_constraints)):
                         constraint_lambda = partial(self.state_ineq_constraint_wrapper, time_index, constraint_index)
-                        new_constraint = {'type': 'ineq', 'fun': constraint_lambda}
+                        constraint_jac = partial(self.state_ineq_constraint_jac, time_index, constraint_index)
+                        new_constraint = {'type': 'ineq', 'fun': constraint_lambda, 'jac': constraint_jac}
                         constraints.append(new_constraint)
+            timer.toc()
 
+            timer.tic("State function constraint jacobians")
             # add constraints to make the state sequence adhere to the model's state transition function
             for i in range(N):
                 state_constraint_lambda = partial(self.discrete_state_func_constraint, self.last_us[i], i)
                 state_constraint_jac = partial(self.discrete_state_func_constraint_jac, self.last_us[i], i)
                 new_constraint = {'type': 'eq', 'fun': state_constraint_lambda, 'jac': state_constraint_jac}
                 constraints.append(new_constraint)
+            timer.toc()
 
             timer.tic("Inverting EKF covariance")
             P_inv = np.linalg.inv(self.ekf.P)
