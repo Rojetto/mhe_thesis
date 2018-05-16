@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from typing import *
 import numpy as np
+from easytime import Timer
 
 import pymoskito as pm
 
@@ -72,10 +73,11 @@ class ExtendedKalmanFilter:
         self.x = x0
         self.P = P0
 
-    def step(self, u, z, h, x_prev = None):
+    def step(self, u, z, h, x_prev=None, timer=Timer()):
         x_prev = x_prev if x_prev is not None else self.x
         P_prev = self.P
 
+        timer.tic("Predict")
         if u is not None:
             # we are at k >= 1
             # Predict
@@ -86,13 +88,15 @@ class ExtendedKalmanFilter:
             # we are at k = 0 and can therefore only update our initial state based on the current measurement
             x_priori = x_prev
             P_priori = P_prev
-
-        h_jacobian = self.observer_model.h_jacobian(x_prev)
+        timer.toc()
 
         # Update
+        timer.tic("Update")
+        h_jacobian = self.observer_model.h_jacobian(x_prev)
         K = P_priori @ h_jacobian.T @ np.linalg.inv(h_jacobian @ P_priori @ h_jacobian.T + self.R)
         self.x = x_priori + K @ (z - self.observer_model.output_func(x_priori))
         self.P = (np.identity(self.observer_model.state_dim) - K @ h_jacobian) @ P_priori
+        timer.toc()
 
         return self.x, self.P
 

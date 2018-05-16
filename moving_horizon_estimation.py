@@ -506,7 +506,7 @@ class MovingHorizonEstimator(pm.Observer):
             timer.tic("Inverting EKF covariance")
             P_inv = np.linalg.inv(self.ekf.P)
             timer.toc()
-            x0_tilde = self.last_estimates[1] if self.k > 1 else self._settings['initial state']
+            x0_tilde = self.xL_ekf
 
             # pre-fill constant values in cost and cost jacobian calculations
             # the only input of these partials that remains is the optimization vector
@@ -537,7 +537,7 @@ class MovingHorizonEstimator(pm.Observer):
             if self.k >= self.N:
                 # Wir haben keinen FIE mehr sondern müssen jetzt die arrival cost für den nächsten Schritt approximieren
                 timer.tic("EKF Update")
-                self.ekf.step(self.last_us[0], self.last_ys[1], self.step_width, x_prev=self.last_estimates[0])  # P[k-N+1]
+                self.ekf.step(self.last_us[0], self.last_ys[1], self.step_width, x_prev=self.last_estimates[0], timer=timer)  # P[k-N+1]
                 self.xL_ekf = self.observer_model.discrete_state_func(self.last_estimates[0], self.last_us[0], np.zeros(state_dim), self.step_width)
                 timer.toc()
 
