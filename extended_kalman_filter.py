@@ -109,8 +109,9 @@ class ExtendedKalmanFilterObserver(pm.Observer):
 
     public_settings = OrderedDict([
         ("initial state", [0.0, 0.0, 0.0, 0.0]),
-        ("sqrt Qii", [0.01, 0.01, 0.01, 0.01]),
-        ("sqrt Rii", [0.001]),
+        ("P0ii", [1e-8, 1e-8, 1e-8, 1e-8]),
+        ("Qii", [1e-4, 1e-4, 1e-4, 1e-4]),
+        ("Rii", [1e-6]),
         ("tick divider", 10)
     ])
 
@@ -118,12 +119,13 @@ class ExtendedKalmanFilterObserver(pm.Observer):
         settings.update(output_dim=observer_model.state_dim)
         super().__init__(settings)
 
-        Q_diagonal = np.array(self._settings['sqrt Qii'], dtype=np.float64) ** 2
+        Q_diagonal = np.array(self._settings['Qii'], dtype=np.float64)
         Q = np.diag(Q_diagonal)
-        R_diagonal = np.array(self._settings['sqrt Rii'], dtype=np.float64) ** 2
+        R_diagonal = np.array(self._settings['Rii'], dtype=np.float64)
         R = np.diag(R_diagonal)
 
-        P0 = np.identity(observer_model.state_dim, dtype=np.float64)
+        P0_diagonal = np.array(self._settings['P0ii'], dtype=np.float64)
+        P0 = np.diag(P0_diagonal)
         x0 = np.array(self._settings["initial state"], dtype=np.float64)
 
         self.filter_algorithm = ExtendedKalmanFilter(observer_model, Q, R, x0, P0)

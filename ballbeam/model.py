@@ -19,8 +19,7 @@ class BallBeamModel(pm.Model):
                                    ("beam width", st.beam_width),
                                    ("beam depth", st.beam_depth),
                                    ("initial state", st.initial_state),
-                                   ("input noise sigma", 0),
-                                   ("output noise sigma", 0)
+                                   ("output noise variance", 0)
                                    ])
 	
 	#init
@@ -42,8 +41,7 @@ class BallBeamModel(pm.Model):
         self.G = self._settings['G']
         self.B = self.M / (self.Jb / self.R ** 2 + self.M)
 
-        self.input_noise = self._settings['input noise sigma']
-        self.output_noise = self._settings['output noise sigma']
+        self.output_noise = self._settings['output noise variance']
 
 	#state
     def state_function(self, t, x, args):
@@ -99,7 +97,7 @@ class BallBeamModel(pm.Model):
         :param input_vector: input values
         :return: ball position
         """
-        return input_vector[0] + np.random.normal(0, self.output_noise)
+        return input_vector[0] + np.random.normal(0, np.sqrt(self.output_noise))
 
 #register
 pm.register_simulation_module(pm.Model, BallBeamModel)

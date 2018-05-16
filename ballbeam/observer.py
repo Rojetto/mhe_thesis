@@ -85,11 +85,13 @@ class BallBeamObserverModel(ObserverModel):
 
 class BallBeamEKF(ExtendedKalmanFilterObserver):
     def __init__(self, settings):
+        np.random.seed(0)
         super().__init__(settings, BallBeamObserverModel())
 
 
 class BallBeamMHE(MovingHorizonEstimator):
     def __init__(self, settings):
+        np.random.seed(0)
         super().__init__(settings, BallBeamObserverModel())
 
 

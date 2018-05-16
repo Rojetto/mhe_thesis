@@ -16,8 +16,9 @@ Array = np.ndarray
 class MovingHorizonEstimator(pm.Observer):
     public_settings = OrderedDict([
         ("initial state", [0, 0, 0, 0]),
-        ("sqrt Qii", [0.01, 0.01, 0.01, 0.01]),
-        ("sqrt Rii", [0.001]),
+        ("P0ii", [1e-8, 1e-8, 1e-8, 1e-8]),
+        ("Qii", [1e-4, 1e-4, 1e-4, 1e-4]),
+        ("Rii", [1e-6]),
         ("N", 1),
         ("max iter", 15),
         ("constraints", False),
@@ -32,16 +33,18 @@ class MovingHorizonEstimator(pm.Observer):
         settings.update(output_dim=self.observer_model.state_dim)
         super().__init__(settings)
 
-        Q_diagonal = np.array(self._settings['sqrt Qii'], dtype=np.float64) ** 2
+        Q_diagonal = np.array(self._settings['Qii'], dtype=np.float64)
         self.Q = np.diag(Q_diagonal)
         self.Q_inv: Array = np.linalg.inv(self.Q)
         self.Q_inv_sqrt: Array = np.sqrt(self.Q_inv)
-        R_diagonal = np.array(self._settings['sqrt Rii'], dtype=np.float64) ** 2
+        R_diagonal = np.array(self._settings['Rii'], dtype=np.float64)
         self.R = np.diag(R_diagonal)
         self.R_inv: Array = np.linalg.inv(self.R)
         self.R_inv_sqrt: Array = np.sqrt(self.R_inv)
 
-        self.P_rti = np.eye(self.observer_model.state_dim)
+        P0_diagonal = np.array(self._settings['P0ii'], dtype=np.float64)
+        P0 = np.diag(P0_diagonal)
+        self.P_rti = np.sqrt(np.linalg.inv(P0))
         """Weight matrix for arrival cost in RTI scheme"""
         self.xL_rti = self._settings['initial state']
         """State at left horizon edge for arrival cost in RTI scheme"""
@@ -55,6 +58,8 @@ class MovingHorizonEstimator(pm.Observer):
         """Sequence of N+1 last system measurement vectors (grows for the first few simulation steps)"""
         self.last_xs = np.array([self._settings["initial state"]], dtype=np.float64)
         """Sequence of N+1 state vectors from the last observation"""
+        self.last_ws = np.empty((0, self.observer_model.state_dim), dtype=np.float64)
+        """Sequence of N process noise vectors from the last observation"""
         self.last_estimates = np.empty((0, self.observer_model.state_dim), dtype=np.float64)
         """Sequence of N+1 moving horizon estimate results (the last values on their horizons)"""
         self.xL_ekf = self._settings['initial state']
@@ -65,7 +70,7 @@ class MovingHorizonEstimator(pm.Observer):
 
         self.k = 0
 
-        self.ekf = ExtendedKalmanFilter(self.observer_model, self.Q, self.R, self.last_xs[0], np.identity(self.observer_model.state_dim))
+        self.ekf = ExtendedKalmanFilter(self.observer_model, self.Q, self.R, self.last_xs[0], P0)
 
         self.timer = Timer()
 
@@ -330,10 +335,13 @@ class MovingHorizonEstimator(pm.Observer):
 
             if self.k > self.N:
                 xs = np.concatenate((self.last_xs[1:], np.array([new_state_init_guess])))
+                ws = np.concatenate((self.last_ws[1:], np.zeros((1, state_dim))))
             else:
                 xs = np.concatenate((self.last_xs, np.array([new_state_init_guess])))
+                ws = np.concatenate((self.last_ws, np.zeros((1, state_dim))))
         else:
             xs = self.last_xs
+            ws = self.last_ws
 
         nx = xs.shape[0]
         timer.toc()
@@ -472,7 +480,9 @@ class MovingHorizonEstimator(pm.Observer):
             # Output
             self.k += 1
             timer.toc()
-            return estimated_state
+
+            P_covariance = np.linalg.inv(self.P_rti @ self.P_rti)
+            return np.concatenate((estimated_state, P_covariance.diagonal()))
         else:
             constraints = []
             timer.tic("Constraint jacobians")
@@ -519,13 +529,15 @@ class MovingHorizonEstimator(pm.Observer):
                 cost_jac_lambda = partial(self.cost_jacobian_abs, x0_tilde, P_inv_sqrt, self.last_ys, N)
 
             timer.tic("Scipy minimize")
-            opt_result: scipy.optimize.OptimizeResult = minimize(cost_lambda, np.concatenate((xs.reshape((xs.size,)), np.zeros(state_dim * N))),
+            opt_result: scipy.optimize.OptimizeResult = minimize(cost_lambda, np.concatenate((xs.reshape((xs.size,)), ws.reshape((ws.size,)))),
                                                                  jac=cost_jac_lambda, constraints=constraints, method='SLSQP', options={'maxiter': self.max_iter})
             timer.toc()
             opt_xs = opt_result.x[:(N+1)*state_dim].reshape((N+1, state_dim))
+            opt_ws = opt_result.x[(N+1)*state_dim:].reshape((N, state_dim))
             estimated_state = opt_xs[-1]
 
             self.last_xs = opt_xs  # x[k-N .. k]
+            self.last_ws = opt_ws
 
             if self.k <= self.N:
                 self.last_estimates = np.resize(self.last_estimates, (self.last_estimates.shape[0] + 1, state_dim))
