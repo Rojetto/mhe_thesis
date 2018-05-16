@@ -166,7 +166,7 @@ class MovingHorizonEstimator(pm.Observer):
         cost_jacobian[:dim] = (chis[0] - x0) @ (P_inv + P_inv.T) + 2 * (self.observer_model.output_func(chis[0]) - ys[0]) @ self.R_inv @ self.observer_model.h_jacobian(chis[0])
 
         for i in range(N):
-            cost_jacobian[(i+1)*dim:(i+2)*dim] = 2 * (self.observer_model.output_func(chis[i + 1]) - ys[i]) @ self.R_inv @ self.observer_model.h_jacobian(chis[i+1])
+            cost_jacobian[(i+1)*dim:(i+2)*dim] = 2 * (self.observer_model.output_func(chis[i + 1]) - ys[i+1]) @ self.R_inv @ self.observer_model.h_jacobian(chis[i+1])
             cost_jacobian[(i+1+N)*dim:(i+2+N)*dim] = 2 * omegas[i] @ self.Q_inv
 
         return cost_jacobian
