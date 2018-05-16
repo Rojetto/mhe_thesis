@@ -72,8 +72,8 @@ class ExtendedKalmanFilter:
         self.x = x0
         self.P = P0
 
-    def step(self, u, z, h):
-        x_prev = self.x
+    def step(self, u, z, h, x_prev = None):
+        x_prev = x_prev if x_prev is not None else self.x
         P_prev = self.P
 
         if u is not None:
