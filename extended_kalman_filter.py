@@ -109,10 +109,10 @@ class ExtendedKalmanFilterObserver(pm.Observer):
 
     public_settings = OrderedDict([
         ("initial state", [0.0, 0.0, 0.0, 0.0]),
-        ("P0ii", [1e-8, 1e-8, 1e-8, 1e-8]),
-        ("Qii", [1e-4, 1e-4, 1e-4, 1e-4]),
+        ("P0ii", [0.01, 0.01, 0.01, 0.1]),
+        ("Qii", [1e-5, 1e-5, 1e-5, 1e-5]),
         ("Rii", [1e-6]),
-        ("tick divider", 10)
+        ("tick divider", 5)
     ])
 
     def __init__(self, settings, observer_model):
@@ -128,6 +128,8 @@ class ExtendedKalmanFilterObserver(pm.Observer):
         P0 = np.diag(P0_diagonal)
         x0 = np.array(self._settings["initial state"], dtype=np.float64)
 
+        self.k = 0
+
         self.filter_algorithm = ExtendedKalmanFilter(observer_model, Q, R, x0, P0)
         self.timer = Timer()
 
@@ -141,4 +143,9 @@ class ExtendedKalmanFilterObserver(pm.Observer):
         x, P = self.filter_algorithm.step(system_input, system_output, h, timer=timer)
 
         timer.toc()
+
+        if self.k % 100 == 0:
+            timer.print()
+
+        self.k += 1
         return np.concatenate((x, P.diagonal()))

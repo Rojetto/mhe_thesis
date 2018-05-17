@@ -16,15 +16,15 @@ Array = np.ndarray
 class MovingHorizonEstimator(pm.Observer):
     public_settings = OrderedDict([
         ("initial state", [0, 0, 0, 0]),
-        ("P0ii", [1e-8, 1e-8, 1e-8, 1e-8]),
-        ("Qii", [1e-4, 1e-4, 1e-4, 1e-4]),
+        ("P0ii", [0.01, 0.01, 0.01, 0.1]),
+        ("Qii", [1e-5, 1e-5, 1e-5, 1e-5]),
         ("Rii", [1e-6]),
-        ("N", 1),
+        ("N", 2),
         ("max iter", 100),
-        ("constraints", False),
+        ("constraints", True),
         ("quad", True),
         ("rti", True),
-        ("tick divider", 10)
+        ("tick divider", 5)
     ])
 
     def __init__(self, settings, observer_model):

@@ -67,8 +67,8 @@ class BallBeamObserverModel(ObserverModel):
         return np.array([x[0]], dtype=np.float64)
 
     def beam_edges_constraint(self, x: Array) -> Array:
-        return np.array([x[0] + 4,   # left edge
-                         4 - x[0]])  # right edge
+        return np.array([x[0] + 4.5,   # left edge
+                         4.5 - x[0]])  # right edge
 
     def beam_edges_constraint_jac(self, x: Array) -> Array:
         return np.array([[1., 0., 0., 0.],
