@@ -20,7 +20,7 @@ class MovingHorizonEstimator(pm.Observer):
         ("Qii", [1e-4, 1e-4, 1e-4, 1e-4]),
         ("Rii", [1e-6]),
         ("N", 1),
-        ("max iter", 15),
+        ("max iter", 100),
         ("constraints", False),
         ("quad", True),
         ("rti", True),

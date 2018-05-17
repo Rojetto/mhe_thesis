@@ -129,12 +129,16 @@ class ExtendedKalmanFilterObserver(pm.Observer):
         x0 = np.array(self._settings["initial state"], dtype=np.float64)
 
         self.filter_algorithm = ExtendedKalmanFilter(observer_model, Q, R, x0, P0)
+        self.timer = Timer()
 
     def _observe(self, time, system_input, system_output):
         """
         Observer output function that returns the state estimate as well as the estimated variances for each state
         """
+        timer = self.timer
+        timer.tic("Total observation")
         h = self.step_width
-        x, P = self.filter_algorithm.step(system_input, system_output, h)
+        x, P = self.filter_algorithm.step(system_input, system_output, h, timer=timer)
 
+        timer.toc()
         return np.concatenate((x, P.diagonal()))
