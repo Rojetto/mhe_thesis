@@ -1,0 +1,30 @@
+- Name: dummy
+  # This regime shows a transition of the ball from the left to the right side
+  # of the beam using a nonlinear controller
+
+  # decide whether previous settings should remain or not. Typically regimes
+  # become a lot shorter if you only overwrite the value that change
+  # e.g. while varying a physical parameter
+  clear previous: !!python/bool True
+
+  # Class name of the SimulationModel that is to be simulated.
+  # As you can see, not all parameters have to be given, all settings that are
+  # not given here will be taken from the default values, defined in the class.
+  Model:
+    type: Dummy
+    initial state: [0]
+
+  # Class name and settings for the solver
+  Solver:
+    type: ODEInt
+    # the measure rate controls how dense the returned data will be
+    measure rate: 10
+    end time: 5
+
+  # Class Name of the controller
+  Controller:
+    type: Dummy
+
+  Observer:
+    type: QuadcopterEKF
+    initial state: [1, 0, 0, 0]
