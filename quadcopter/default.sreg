@@ -18,7 +18,7 @@
   Solver:
     type: ODEInt
     # the measure rate controls how dense the returned data will be
-    measure rate: 10
+    measure rate: 500
     end time: 5
 
   # Class Name of the controller
@@ -28,3 +28,6 @@
   Observer:
     type: QuadcopterEKF
     initial state: [1, 0, 0, 0]
+    P0ii: [0.01, 0.01, 0.01, 0.01]
+    Qii: [0.00001, 0.00001, 0.00001, 0.00001]
+    Rii: [0.1, 0.1, 0.1, 0.00001]
