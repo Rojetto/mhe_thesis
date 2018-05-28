@@ -1,10 +1,10 @@
-from typing import Callable, List, Tuple, Union
-
-import pymoskito as pm
-import numpy as np
 from collections import OrderedDict
-from extended_kalman_filter import ObserverModel, Array
+
+import numpy as np
+import pymoskito as pm
 import sympy as sp
+
+from extended_kalman_filter import ObserverModel, Array
 
 
 class Dummy(pm.Model):
@@ -28,7 +28,9 @@ class QuadcopterObserverModel(ObserverModel):
         input_dim = 3
         output_dim = 4
         self.state_lambda, self.out_lambda, f_jacobian, h_jacobian = self.derive_lambdas()
-        state_eq_constraints = []
+        state_eq_constraints = [(lambda q: np.array([q[0]**2 + q[1]**2 + q[2]**2 + q[3]**2 - 1]),
+                                 1,
+                                 lambda q: np.array([[2*q[0], 2*q[1], 2*q[2], 2*q[3]]]))]
         state_ineq_constraints = []
 
         super().__init__(state_dim, input_dim, output_dim, f_jacobian, h_jacobian, state_ineq_constraints,

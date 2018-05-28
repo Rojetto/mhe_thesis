@@ -349,7 +349,7 @@ class MovingHorizonEstimator(pm.Observer):
         if self.rti:
             # Calculating the residual vector
             timer.tic("Residual vector")
-            residual = np.empty((nx)*(state_dim + output_dim), dtype=np.float64)
+            residual = np.empty(nx * (state_dim + output_dim), dtype=np.float64)
             residual[:state_dim] = self.P_rti @ (xs[0] - self.xL_rti)
             residual[state_dim:(state_dim+output_dim)] = self.R_inv_sqrt @ (self.last_ys[0] - self.observer_model.output_func(xs[0]))
 

@@ -56,6 +56,10 @@ def euler_to_q(euler):
     return np.array([q1, q2, q3, q4])
 
 
+def rad_to_deg(euler_rad):
+    return np.array(euler_rad)/np.pi*180.0
+
+
 def generate_trajectory_files():
     """To be called by hand"""
 
@@ -144,3 +148,22 @@ def generate_trajectory_files():
     phi = lagrange_polynomial(t, [(i - 1, y) for i, y in enumerate([0, 0, 0, 0, 1.5, 0, 0])])
     traj_tuple = sim_trajectory(t, x, y, z, phi, theta, psi, 0.1, 0.1, 4, 0.005)
     write_tuple('sim_1_stationary', traj_tuple)
+
+    x = lagrange_polynomial(t, [(0, 0), (2, 1), (4, 1)])
+    y = lagrange_polynomial(t, [(0, 0), (2, 1), (4, 1)])
+    z = lagrange_polynomial(t, [(0, 0), (2, 1), (4, 1)])
+    traj_tuple = sim_trajectory(t, x, y, z, phi, theta, psi, 0.1, 0.1, 4, 0.005)
+    write_tuple('sim_1_moving', traj_tuple)
+
+    x = sp.S(0)
+    y = sp.S(0)
+    z = sp.S(0)
+    phi = 3*sp.sin(sp.pi*t)
+    theta = 1.5*sp.sin((sp.pi-1)*t)
+    psi = 3*sp.sin((sp.pi+1)*t)
+    traj_tuple = sim_trajectory(t, x, y, z, phi, theta, psi, 0.1, 0.1, 60, 0.005)
+    write_tuple('sim_2_stationary', traj_tuple)
+
+
+if __name__ == '__main__':
+    generate_trajectory_files()
