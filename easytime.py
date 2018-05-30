@@ -28,9 +28,11 @@ class Timer:
         self.running_timer = timer_to_start
 
     def toc(self):
+        dt = 0
         if self.running_timer is not None:
-            self.running_timer.stop()
+            dt = self.running_timer.stop()
             self.running_timer = self.running_timer.parent
+        return dt
 
     def print(self):
         sorted_subs = sorted(self.root_timers, key=lambda s: s.total, reverse=True)
@@ -64,6 +66,8 @@ class SubTimer:
         else:
             self.min = min(self.min, dt)
         self.max = max(self.max, dt)
+
+        return dt
 
     def sub(self, sub):
         sub.parent = self

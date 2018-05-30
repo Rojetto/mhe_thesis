@@ -479,10 +479,10 @@ class MovingHorizonEstimator(pm.Observer):
 
             # Output
             self.k += 1
-            timer.toc()
+            dt = timer.toc()
 
             P_covariance = np.linalg.inv(self.P_rti @ self.P_rti)
-            return np.concatenate((estimated_state, P_covariance.diagonal()))
+            return np.concatenate((estimated_state, P_covariance.diagonal(), [dt*1000]))
         else:
             constraints = []
             timer.tic("Constraint jacobians")

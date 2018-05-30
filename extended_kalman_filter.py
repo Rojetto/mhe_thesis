@@ -142,10 +142,10 @@ class ExtendedKalmanFilterObserver(pm.Observer):
         h = self.step_width
         x, P = self.filter_algorithm.step(system_input, system_output, h, timer=timer)
 
-        timer.toc()
+        dt = timer.toc()
 
         if self.k % 100 == 0:
             timer.print()
 
         self.k += 1
-        return np.concatenate((x, P.diagonal()))
+        return np.concatenate((x, P.diagonal(), [dt * 1000]))
