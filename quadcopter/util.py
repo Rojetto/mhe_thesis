@@ -10,8 +10,29 @@ def get_trajectory(traj_name):
     import pickle
     script_directory = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
     traj_dir = script_directory / 'trajectories'
-    with open(traj_dir / f"{traj_name}.dat", 'rb') as f:
-        traj_tuple = pickle.load(f)
+
+    if traj_name.startswith('sim'):
+        with open(traj_dir / f"{traj_name}.dat", 'rb') as f:
+            traj_tuple = pickle.load(f)
+    else:
+        with open(traj_dir / f"{traj_name}.p", 'rb') as f:
+            p_dict = pickle.load(f)
+
+        # read linear acceleration an angular velocity data
+        ts = np.array(p_dict['imu']['header']['stamp']['secs']) + np.array(p_dict['imu']['header']['stamp']['nsecs']) * 1e-9
+        ts = ts-ts[0]
+        accelerometer = np.array([p_dict['imu']['linear_acceleration']['x'], p_dict['imu']['linear_acceleration']['y'], p_dict['imu']['linear_acceleration']['z']]).T
+        gyro = np.array([p_dict['imu']['angular_velocity']['x'], p_dict['imu']['angular_velocity']['y'], p_dict['imu']['angular_velocity']['z']]).T
+
+        mocap_ts = np.array(p_dict['mcap']['header']['stamp']['secs']) + np.array(p_dict['mcap']['header']['stamp']['nsecs']) * 1e-9
+        mocap_ts = mocap_ts - mocap_ts[0]
+        ref_pos = np.array([p_dict['mcap']['position']['x'], p_dict['mcap']['position']['y'], p_dict['mcap']['position']['z']]).T
+        ref_q = np.array([p_dict['mcap']['rotation']['w'], p_dict['mcap']['rotation']['x'], p_dict['mcap']['rotation']['y'], p_dict['mcap']['rotation']['z']]).T
+        ref_ori = np.array([q_to_euler(ref_q[k]) for k in range(mocap_ts.size)])
+        ref_ori = rad_to_deg(ref_ori)
+
+        # TODO: has disparate time vectors
+        traj_tuple = (ts, mocap_ts, ref_pos, ref_ori, gyro, accelerometer)
 
     return traj_tuple
 
