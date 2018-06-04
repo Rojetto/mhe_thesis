@@ -36,8 +36,8 @@ class QuadcopterEKF(ExtendedKalmanFilterObserver):
 
         # Normalize quaterion
         if self.norm_correction:
-            self.filter_algorithm.x = obs_q / norm(obs_q)
-            obs_q = self.filter_algorithm.x
+            self.filter_algorithm.x[:4] = obs_q / norm(obs_q)
+            obs_q = self.filter_algorithm.x[:4]
 
         obs_orientation = q_to_euler(obs_q)
         obs_err = euler_difference(ref_orientation, obs_orientation)
