@@ -20,14 +20,15 @@ class QuadcopterEKF(ExtendedKalmanFilterObserver):
 
         self.trajectory = self._settings['trajectory']
         self.norm_correction = self._settings['q norm correction']
-        self.ts, self.ref_pos, self.ref_angles, self.meas_gyro, self.meas_accelerometer = get_trajectory(self.trajectory)
+        self.ts, self.meas_accelerometer, self.meas_gyro, self.ref_ts, self.ref_pos, self.ref_angles = get_trajectory(self.trajectory)
 
     def _observe(self, t, system_input, system_output):
-        index = time_to_index(t, self.ts)
-        ref_pos = self.ref_pos[index]
-        ref_orientation = self.ref_angles[index]
-        meas_gyro = self.meas_gyro[index]
-        meas_accelerometer = self.meas_accelerometer[index]
+        imu_index = time_to_index(t, self.ts)
+        ref_index = time_to_index(t, self.ref_ts)
+        ref_pos = self.ref_pos[ref_index]
+        ref_orientation = self.ref_angles[ref_index]
+        meas_gyro = self.meas_gyro[imu_index]
+        meas_accelerometer = self.meas_accelerometer[imu_index]
 
         system_measurement = np.concatenate((meas_accelerometer, np.array([ref_orientation[2]])))
 
@@ -42,7 +43,8 @@ class QuadcopterEKF(ExtendedKalmanFilterObserver):
         obs_orientation = q_to_euler(obs_q)
         obs_err = euler_difference(ref_orientation, obs_orientation)
 
-        output = np.concatenate((ref_pos, rad_to_deg(ref_orientation), rad_to_deg(obs_orientation), rad_to_deg(obs_err), meas_gyro, meas_accelerometer, [norm(obs_q)]))
+        output = np.concatenate((ref_pos, rad_to_deg(ref_orientation), rad_to_deg(obs_orientation), rad_to_deg(obs_err), observer_out[4:7], meas_gyro, meas_accelerometer, [norm(obs_q)]))
+
         return output
 
 
@@ -55,14 +57,15 @@ class QuadcopterMHE(MovingHorizonEstimator):
         super().__init__(settings, QuadcopterObserverModel())
 
         self.trajectory = self._settings['trajectory']
-        self.ts, self.ref_pos, self.ref_angles, self.meas_gyro, self.meas_accelerometer = get_trajectory(self.trajectory)
+        self.ts, self.meas_accelerometer, self.meas_gyro, self.ref_ts, self.ref_pos, self.ref_angles = get_trajectory(self.trajectory)
 
     def _observe(self, t, system_input: Array, system_output: Array) -> Array:
-        index = time_to_index(t, self.ts)
-        ref_pos = self.ref_pos[index]
-        ref_orientation = self.ref_angles[index]
-        meas_gyro = self.meas_gyro[index]
-        meas_accelerometer = self.meas_accelerometer[index]
+        imu_index = time_to_index(t, self.ts)
+        ref_index = time_to_index(t, self.ref_ts)
+        ref_pos = self.ref_pos[ref_index]
+        ref_orientation = self.ref_angles[ref_index]
+        meas_gyro = self.meas_gyro[imu_index]
+        meas_accelerometer = self.meas_accelerometer[imu_index]
 
         system_measurement = np.concatenate((meas_accelerometer, np.array([ref_orientation[2]])))
 
@@ -72,7 +75,7 @@ class QuadcopterMHE(MovingHorizonEstimator):
         obs_orientation = q_to_euler(obs_q)
         obs_err = euler_difference(ref_orientation, obs_orientation)
 
-        output = np.concatenate((ref_pos, rad_to_deg(ref_orientation), rad_to_deg(obs_orientation), rad_to_deg(obs_err), meas_gyro, meas_accelerometer, [norm(obs_q)]))
+        output = np.concatenate((ref_pos, rad_to_deg(ref_orientation), rad_to_deg(obs_orientation), rad_to_deg(obs_err), observer_out[4:7], meas_gyro, meas_accelerometer, [norm(obs_q)]))
         return output
 
 

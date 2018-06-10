@@ -47,7 +47,7 @@ class QuadcopterObserverModel(ObserverModel):
         wrealx = wx-bwx
         wrealy = wy-bwy
         wrealz = wz-bwz
-        g = 9.81
+        g = -9.81 # g in inertial frame, positive means pointing in positive z direction
         w_mat = sp.Matrix([[0, -wrealx, -wrealy, -wrealz],
                            [wrealx, 0, wrealz, -wrealy],
                            [wrealy, -wrealz, 0, wrealx],
@@ -63,9 +63,9 @@ class QuadcopterObserverModel(ObserverModel):
         f_jac_scalar = sp.lambdify((a, b, c, d, bwx, bwy, bwz, wx, wy, wz, h), f.jacobian(x))
         f_jac = lambda x_, u_, h_: f_jac_scalar(*x_, *u_, h_)
 
-        h_fun = sp.Matrix([[2*g*(b*d - a*c)],
-                       [2*g*(a*b + c*d)],
-                       [g*(a**2-b**2-c**2+d**2)],
+        h_fun = sp.Matrix([[-2*g*(b*d - a*c)],
+                       [-2*g*(a*b + c*d)],
+                       [-g*(a**2-b**2-c**2+d**2)],
                        [sp.atan2(2*(b*c+a*d), a**2+b**2-c**2-d**2)]])
         h_scalar = sp.lambdify((a, b, c, d, bwx, bwy, bwz), h_fun)
         h_lambda = lambda x_: h_scalar(*x_)

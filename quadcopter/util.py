@@ -3,6 +3,18 @@ import math
 import numpy as np
 import sympy as sp
 
+from enum import Enum
+
+
+class TrajectoryData(Enum):
+    SIM_1_MOVING = 'sim_1_moving'
+    SIM_1_STATIONARY = 'sim_1_stationary'
+    SIM_2_STATIONARY = 'sim_2_stationary'
+    UAV_1 = 'uav_2017-02-21-20-59-53_0'
+    UAV_2 = 'uav_2017-06-22-15-02-39'
+    UAV_3 = 'uav_2018-01-10-15-56-59'
+    ROOM_3 = 'dataset-room3_512_16'
+
 
 def get_trajectory(traj_name):
     import os
@@ -10,6 +22,9 @@ def get_trajectory(traj_name):
     import pickle
     script_directory = pathlib.Path(os.path.dirname(os.path.realpath(__file__)))
     traj_dir = script_directory / 'trajectories'
+
+    if isinstance(traj_name, TrajectoryData):
+        traj_name = traj_name.value
 
     if traj_name.startswith('sim'):
         with open(traj_dir / f"{traj_name}.dat", 'rb') as f:
@@ -29,10 +44,14 @@ def get_trajectory(traj_name):
         ref_pos = np.array([p_dict['mcap']['position']['x'], p_dict['mcap']['position']['y'], p_dict['mcap']['position']['z']]).T
         ref_q = np.array([p_dict['mcap']['rotation']['w'], p_dict['mcap']['rotation']['x'], p_dict['mcap']['rotation']['y'], p_dict['mcap']['rotation']['z']]).T
         ref_ori = np.array([q_to_euler(ref_q[k]) for k in range(mocap_ts.size)])
-        ref_ori = rad_to_deg(ref_ori)
 
-        # TODO: has disparate time vectors
-        traj_tuple = (ts, mocap_ts, ref_pos, ref_ori, gyro, accelerometer)
+        # Alle Zeiten aus ts in Indizes für ref_ori und ref_pos umrechnen
+        # mocap_t_min = mocap_ts[0]
+        # mocap_t_max = mocap_ts[-1]
+        # mocap_indices = np.floor((ts - mocap_t_min) / (mocap_t_max - mocap_t_min) * mocap_ts.size)
+        # mocap_indices = np.maximum(np.minimum(mocap_indices, np.ones(ts.size)*mocap_ts.size-1), np.zeros(ts.size)).astype(np.int)
+
+        traj_tuple = (ts, accelerometer, gyro, mocap_ts, ref_pos, ref_ori)
 
     return traj_tuple
 
@@ -40,9 +59,21 @@ def get_trajectory(traj_name):
 def time_to_index(t, ts):
     t_min = min(ts)
     t_max = max(ts)
-    index = math.floor((t - t_min) / (t_max - t_min) * ts.size)
-    index = max(min(index, ts.size - 1), 0)
-    return index
+
+    # initial guess
+    k = math.floor((t - t_min) / (t_max - t_min) * ts.size)
+    k = max(min(k, ts.size - 1), 0)
+
+    # refine index
+    while True:
+        if k > 0 and abs(ts[k-1] - t) < abs(ts[k] - t):
+            k = k - 1
+        elif k < ts.size - 1 and abs(ts[k+1] - t) < abs(ts[k] - t):
+            k = k + 1
+        else:
+            break
+
+    return k
 
 
 def euler_difference(ref, meas):
