@@ -5,7 +5,10 @@ from numpy import pi
 
 rcParams['figure.dpi'] = 96*2
 
-imu_ts, acc, gyro, mocap_ts, pos, ori = get_trajectory(TrajectoryData.ROOM_3)
+imu_ts, acc, gyro, mocap_ts, pos, ori = get_trajectory(TrajectoryData.UAV_3)
+
+print(f"Initial orientation: {list(ori[0])}")
+print(f"Initial state: {list(euler_to_q(ori[0])) + [0., 0., 0.]}")
 
 figure('3D Trajectory')
 ax = subplot(111, projection='3d')
