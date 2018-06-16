@@ -43,7 +43,7 @@ class QuadcopterEKF(ExtendedKalmanFilterObserver):
         obs_orientation = q_to_euler(obs_q)
         obs_err = euler_difference(ref_orientation, obs_orientation)
 
-        output = np.concatenate((ref_pos, rad_to_deg(ref_orientation), rad_to_deg(obs_orientation), rad_to_deg(obs_err), observer_out[4:7], meas_gyro, meas_accelerometer, [norm(obs_q)]))
+        output = np.concatenate((ref_pos, rad_to_deg(ref_orientation), rad_to_deg(obs_orientation), rad_to_deg(obs_err), observer_out[4:10], meas_gyro, meas_accelerometer, [norm(obs_q)]))
 
         return output
 
@@ -75,7 +75,7 @@ class QuadcopterMHE(MovingHorizonEstimator):
         obs_orientation = q_to_euler(obs_q)
         obs_err = euler_difference(ref_orientation, obs_orientation)
 
-        output = np.concatenate((ref_pos, rad_to_deg(ref_orientation), rad_to_deg(obs_orientation), rad_to_deg(obs_err), observer_out[4:7], meas_gyro, meas_accelerometer, [norm(obs_q)]))
+        output = np.concatenate((ref_pos, rad_to_deg(ref_orientation), rad_to_deg(obs_orientation), rad_to_deg(obs_err), observer_out[4:10], meas_gyro, meas_accelerometer, [norm(obs_q)]))
         return output
 
 

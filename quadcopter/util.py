@@ -103,7 +103,7 @@ def euler_to_q(euler):
     q1 = c(phi2)*c(theta2)*c(psi2)+s(phi2)*s(theta2)*s(psi2)
     q2 = s(phi2)*c(theta2)*c(psi2)-c(phi2)*s(theta2)*s(psi2)
     q3 = c(phi2)*s(theta2)*c(psi2)+s(phi2)*c(theta2)*s(psi2)
-    q4 = c(phi2)*c(theta2)*s(psi2)+s(phi2)*s(theta2)*c(psi2)
+    q4 = c(phi2)*c(theta2)*s(psi2)-s(phi2)*s(theta2)*c(psi2)
 
     return np.array([q1, q2, q3, q4])
 

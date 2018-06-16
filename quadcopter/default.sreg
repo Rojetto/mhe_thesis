@@ -34,6 +34,7 @@
     Qii: [0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001]
     Rii: [0.1, 0.1, 0.1, 0.00001]
 
+#room3_ekf
 - Name: room3_ekf
   # decide whether previous settings should remain or not. Typically regimes
   # become a lot shorter if you only overwrite the value that change
@@ -67,6 +68,7 @@
     Qii: [0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001]
     Rii: [1000, 1000, 1000, 0.00001]
 
+#uav3_ekf
 - Name: uav3_ekf
   # decide whether previous settings should remain or not. Typically regimes
   # become a lot shorter if you only overwrite the value that change
@@ -95,11 +97,12 @@
     type: QuadcopterEKF
     trajectory: uav_2018-01-10-15-56-59
     tick divider: 20
-    initial state: [0.73168887, 0.0, 0.0, .68163876, 0, 0, 0]
-    P0ii: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-    Qii: [0.0001, 0.0001, 0.0001, 0.0001, 0.0000001, 0.0000001, 0.0000001]
+    initial state: [0.73168887, 0.0, 0.0, .68163876, 0, 0, 0, 0, 0, 0]
+    P0ii: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    Qii: [0.0001, 0.0001, 0.0001, 0.0001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
     Rii: [1000, 1000, 1000, 0.00001]
 
+#uav3_ekf_initial_error
 - Name: uav3_ekf_initial_error
   # decide whether previous settings should remain or not. Typically regimes
   # become a lot shorter if you only overwrite the value that change
@@ -128,11 +131,12 @@
     type: QuadcopterEKF
     trajectory: uav_2018-01-10-15-56-59
     tick divider: 20
-    initial state: [0.77015115, 0.42073549, 0.22984885, 0.42073549, 0, 0, 0]
-    P0ii: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-    Qii: [0.0001, 0.0001, 0.0001, 0.0001, 0.0000001, 0.0000001, 0.0000001]
-    Rii: [1000, 1000, 1000, 0.00001]
+    initial state: [0.70710678, 0.0, 0.5, 0.5, 0, 0, 0, 0, 0, 0]
+    P0ii: [1, 1, 1, 1, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    Qii: [0.005, 0.005, 0.005, 0.005, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
+    Rii: [10000, 10000, 10000, 0.00001]
 
+#uav3_mhe
 - Name: uav3_mhe
   # decide whether previous settings should remain or not. Typically regimes
   # become a lot shorter if you only overwrite the value that change
@@ -166,6 +170,7 @@
     Qii: [0.0001, 0.0001, 0.0001, 0.0001, 0.0000001, 0.0000001, 0.0000001]
     Rii: [1000, 1000, 1000, 0.00001]
 
+#uav3_mhe_initial_error
 - Name: uav3_mhe_initial_error
   # decide whether previous settings should remain or not. Typically regimes
   # become a lot shorter if you only overwrite the value that change
@@ -194,7 +199,7 @@
     type: QuadcopterMHE
     trajectory: uav_2018-01-10-15-56-59
     tick divider: 20
-    initial state: [0.77015115, 0.42073549, 0.22984885, 0.42073549, 0, 0, 0]
-    P0ii: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-    Qii: [0.0001, 0.0001, 0.0001, 0.0001, 0.0000001, 0.0000001, 0.0000001]
-    Rii: [1000, 1000, 1000, 0.00001]
+    initial state: [0.70710678, 0.0, 0.5, 0.5, 0, 0, 0, 0, 0, 0]
+    P0ii: [1, 1, 1, 1, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    Qii: [0.005, 0.005, 0.005, 0.005, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
+    Rii: [10000, 10000, 10000, 0.00001]
