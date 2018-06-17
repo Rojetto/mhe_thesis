@@ -1,0 +1,15 @@
+- Name: dummy
+  clear previous: !!python/bool True
+
+  Model:
+    type: ChemicalModel
+
+  Solver:
+    type: ODEInt
+    # the measure rate controls how dense the returned data will be
+    measure rate: 100
+    step size: 0.001
+    end time: 10
+
+  Controller:
+    type: Dummy
