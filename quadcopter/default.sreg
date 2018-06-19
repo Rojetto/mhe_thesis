@@ -203,3 +203,73 @@
     P0ii: [1, 1, 1, 1, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
     Qii: [0.005, 0.005, 0.005, 0.005, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
     Rii: [10000, 10000, 10000, 0.00001]
+    N: 20
+
+#room3_mhe_initial_error
+- Name: room3_mhe_initial_error
+  # decide whether previous settings should remain or not. Typically regimes
+  # become a lot shorter if you only overwrite the value that change
+  # e.g. while varying a physical parameter
+  clear previous: !!python/bool True
+
+  # Class name of the SimulationModel that is to be simulated.
+  # As you can see, not all parameters have to be given, all settings that are
+  # not given here will be taken from the default values, defined in the class.
+  Model:
+    type: Dummy
+    initial state: [0]
+
+  # Class name and settings for the solver
+  Solver:
+    type: ODEInt
+    # the measure rate controls how dense the returned data will be
+    measure rate: 50
+    end time: 25
+
+  # Class Name of the controller
+  Controller:
+    type: Dummy
+
+  Observer:
+    type: QuadcopterMHE
+    trajectory: dataset-room3_512_16
+    tick divider: 20
+    initial state: [0.85355339, 0.35355339, 0.35355339, -0.14644661, 0, 0, 0, 0, 0, 0]
+    P0ii: [1, 1, 1, 1, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    Qii: [0.005, 0.005, 0.005, 0.005, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
+    Rii: [10000, 10000, 10000, 0.00001]
+    N: 20
+
+#room3_ekf_initial_error
+- Name: room3_ekf_initial_error
+  # decide whether previous settings should remain or not. Typically regimes
+  # become a lot shorter if you only overwrite the value that change
+  # e.g. while varying a physical parameter
+  clear previous: !!python/bool True
+
+  # Class name of the SimulationModel that is to be simulated.
+  # As you can see, not all parameters have to be given, all settings that are
+  # not given here will be taken from the default values, defined in the class.
+  Model:
+    type: Dummy
+    initial state: [0]
+
+  # Class name and settings for the solver
+  Solver:
+    type: ODEInt
+    # the measure rate controls how dense the returned data will be
+    measure rate: 50
+    end time: 25
+
+  # Class Name of the controller
+  Controller:
+    type: Dummy
+
+  Observer:
+    type: QuadcopterEKF
+    trajectory: dataset-room3_512_16
+    tick divider: 20
+    initial state: [0.85355339, 0.35355339, 0.35355339, -0.14644661, 0, 0, 0, 0, 0, 0]
+    P0ii: [1, 1, 1, 1, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    Qii: [0.005, 0.005, 0.005, 0.005, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
+    Rii: [10000, 10000, 10000, 0.00001]
