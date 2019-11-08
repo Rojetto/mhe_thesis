@@ -34,7 +34,7 @@ mkl==2018.0.0
 mpmath==1.0.0
 nbconvert==5.3.1
 nbformat==4.4.0
-notebook==5.4.1
+notebook==5.7.8
 numpy==1.14.2
 packaging==17.1
 pandocfilters==1.4.2
